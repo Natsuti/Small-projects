@@ -65,8 +65,12 @@ class Canvas:
                     fila += pixel
                 print("\t\t" + fila)
         if m == "m":
-            for y in self.capas[index]:
-                print("\t\t" + "".join(y))
+            for fila in self.capas[index]:
+                linea = ""
+                for x in fila:
+                    if x is not None:
+                        linea += x
+                print("\t\t" + linea)
         print("\t\t\n\n")
 
     def pixel(self, x, y, s, index=0):
@@ -116,13 +120,29 @@ class Canvas:
     def grid(self, x, y, w, h, cx, cy, s, s2, index=0):
         self.rectangulo(x, y, w, h, s, index)
         for yi in range(0, h, cy):
-            self.linea("h", x, yi, w, s, index)
+            self.linea("h", x, y + yi, w, s, index)
         for xi in range(0, w, cx):
-            self.linea("v", xi, y, h, s2, index)
+            self.linea("v", x + xi, y, h, s2, index)
+
+    def limpiar_matriz(self, index):
+        self.capas[index] = [[None for _ in range(self.w)] for _ in range(self.h)]
 
 
 a = Canvas()
 a.crear_matriz(grid_c["x"], grid_c["y"])
 a.grid(0, 0, grid_c["x"], grid_c["y"], grid_c["cx"], grid_c["cy"], "-", "|")
 logging.debug(f"capas: {len(a.capas)}")
-a.mostrar("c")
+a.crear_matriz(grid_c["x"], grid_c["y"], None, 1)
+x, y = 0, 0
+dx = 1
+dy = 1
+while True:
+    a.pixel(x, y, "a", 1)
+    x += dx
+    y += dy
+    if x <= 0 or x >= grid_c["x"] - 1:
+        dx *= -1
+    if y <= 0 or y >= grid_c["y"] - 1:
+        dy *= -1
+    a.mostrar("c")
+    time.sleep(0.01)
