@@ -35,13 +35,12 @@ a = [
 while True:
     limpiar()
     dibujar_bitmap(x, y, a)
-    x += dx
-    y += dy
-
     if x <= 1 or x >= tx:
         dx *= -1
 
     if y <= 1 or y >= ty:
         dy *= -1
+    x += dx
+    y += dy
 
     time.sleep(0.1)
