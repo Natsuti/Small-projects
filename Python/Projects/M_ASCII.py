@@ -1,33 +1,6 @@
-import datetime, time, logging, calendar
+import time, logging, termios, tty, sys, select
 
 logging.basicConfig(level=logging.CRITICAL, format="%(message)s")
-
-grid_c = {"x": 102, "y": 27, "cx": 17, "cy": 7}
-DATES = {
-    "DAYS": (
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-    ),
-    "MONTHS": (
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
-    ),
-}
 
 
 class Canvas:
@@ -77,8 +50,8 @@ class Canvas:
                         char = capa[y][x].simbolo
                         break
                     fila += char
-                buffer += "\t" + fila + "\n"
-            print(buffer + "\n\n")
+                buffer += fila + "\n"
+            print(buffer)
         elif m == "m":
             buffer = ""
             for y in range(len(self.capas[index])):
@@ -123,6 +96,9 @@ class Texto:
             for s in range(len(self.simbolo)):
                 yield Pixel(s, s, None, self.simbolo[s])
 
+    def bbox(self):
+        return (len(self.simbolo), 1)
+
 
 class Linea:
     def __init__(self, x, y, largo, simbolo, m):
@@ -134,29 +110,36 @@ class Linea:
 
     def generar(self):
         if self.m == "h":
-            for i in range(self.largo):
+            for i in range(self.largo + 1):
                 yield Pixel(self.x + i, self.y, None, self.simbolo)
         elif self.m == "v":
-            for i in range(self.largo):
+            for i in range(self.largo + 1):
                 yield Pixel(self.x, self.y + i, None, self.simbolo)
         elif self.m == "d":
-            for i in range(self.largo):
+            for i in range(self.largo + 1):
                 yield Pixel(self.x + i, self.y + i, None, self.simbolo)
+
+    def bbox(self):
+        if self.m == "h":
+            return (self.largo + 1, 1)
+        if self.m == "v":
+            return (1, self.largo + 1)
+        if self.m == "d":
+            return (self.largo + 1, self.largo + 1)
 
 
 class Rectangulo:
-    def __init__(self, w, h, simbolo1, simbolo2):
+    def __init__(self, w, h, simbolo):
         self.w = w
         self.h = h
-        self.simbolo1 = simbolo1
-        self.simbolo2 = simbolo2
+        self.simbolo = simbolo
 
     def generar(self):
         lados = [
-            Linea(0, 0, self.h, self.simbolo1, "v"),
-            Linea(0, 0, self.w, self.simbolo2, "h"),
-            Linea(self.w, 0, self.h, self.simbolo1, "v"),
-            Linea(0, self.h, self.w, self.simbolo2, "h"),
+            Linea(0, 0, self.h, self.simbolo, "v"),
+            Linea(0, 0, self.w, self.simbolo, "h"),
+            Linea(self.w, 0, self.h, self.simbolo, "v"),
+            Linea(0, self.h, self.w, self.simbolo, "h"),
         ]
         for lado in lados:
             yield from lado.generar()
@@ -172,36 +155,17 @@ class Triangulo:
         pass
 
 
-class Grid:
-    def __init__(self, w, h, cx, cy, simbolo1="-", simbolo2="|"):
-        self.w = w
-        self.h = h
-        self.cx = cx
-        self.cy = cy
-        self.s1 = simbolo1
-        self.s2 = simbolo2
-
-    def generar(self):
-        grid = []
-        for w in range(0, self.w, self.cx):
-            grid.append(Linea(w, 0, self.h, self.s2, "v"))
-        for h in range(0, self.h, self.cy):
-            grid.append(Linea(0, h, self.w, self.s1, "h"))
-        for i in grid:
-            yield from i.generar()
-
-
 class Sprite:
-    def __init__(self, x, y, capa, shapes, fondo):
+    def __init__(self, x, y, capa, shapes, fondo, behaviors):
         self.x = x
         self.y = y
         self.capa = capa
         self.shapes = shapes
         self.fondo = fondo
-        self.w = None
-        self.h = None
+        self.w, self.h = self._calcular_bbox()
         self.dx = 1
         self.dy = 1
+        self.behaviors = behaviors
 
     def generar_shapes(self):
         for shape in self.shapes:
@@ -211,42 +175,144 @@ class Sprite:
                 elif self.fondo:
                     yield Pixel(self.x + i.x, self.y + i.y, self.capa, i.simbolo)
 
-
-class LayoutGrid:
-    def __init__(self, x, y, cols, rows, cell_w, cell_h):
-        self.x = x
-        self.y = y
-        self.cols = cols
-        self.rows = rows
-        self.cell_w = cell_w
-        self.cell_h = cell_h
-
-    def get_pos(self, col, row):
-        return (self.x + col * self.cell_w, self.y + row * self.cell_h)
+    def _calcular_bbox(self):
+        max_w = 0
+        max_h = 0
+        for s in self.shapes:
+            w, h = s.bbox()
+            max_w = max(max_w, w)
+            max_h = max(max_h, h)
+        return max_w, max_h
 
 
-a = Canvas(grid_c["x"], grid_c["y"], 3)
-grid = []
-grid.append(Sprite(2, 2, 1, [Rectangulo(98, 24, "|", "-")], True))
-grid.append(Sprite(2, 2, 1, [Grid(99, 25, 14, 4)], True))
-layout = LayoutGrid(2, 2, 7, 6, 14, 4)
-for d in range(7):
-    x, y = layout.get_pos(d, 0)
-    grid.append(Sprite(x, y - 1, 2, [Texto(DATES["DAYS"][d], "h")], True))
+class Bitmap:
+    def __init__(self, data):
+        self.data = data
+        self.w = max(len(row) for row in self.data)
+        self.h = len(self.data)
 
-year = int(input("> "))
-month = int(input("> "))
-primer_dia = datetime.date(year, month, 1)
-start_day = primer_dia.weekday()
-start_day = (start_day + 1) % 7
-dia_mes = calendar.monthrange(year, month)[1]
-for d in range(1, dia_mes + 1):
-    index = start_day + (d - 1)
-    col = index % 7
-    row = index // 7
-    x, y = layout.get_pos(col, row + 1)
-    grid.append(Sprite(x, y, 2, [Texto(str(d), "h")], True))
-for i in grid:
-    for r in i.generar_shapes():
-        a.escribir_pixel(r)
-a.mostrar("c")
+    def generar(self):
+        for y in range(len(self.data)):
+            for x in range(len(self.data[y])):
+                yield Pixel(x, y, None, self.data[y][x])
+
+    def bbox(self):
+        w = max(len(f) for f in self.data)
+        h = len(self.data)
+        return (w, h)
+
+
+class Scene:
+    def __init__(self, canvas):
+        self.canvas = canvas
+        self.sprites = []
+        self.input_state = set()
+
+    def leer_input(self, input_state):
+        while True:
+            dr, _, _ = select.select([sys.stdin], [], [], 0)
+            if not dr:
+                break
+            key = sys.stdin.read(1)
+            self.input_state.add(key)
+
+    def update(self):
+        self.input_state.clear()
+        self.leer_input(self.input_state)
+        for i in self.sprites:
+            for behavior in i.behaviors:
+                behavior(i, self)
+
+    def draw(self):
+        for s in self.sprites:
+            for p in s.generar_shapes():
+                self.canvas.escribir_pixel(p)
+
+    def render(self):
+        self.canvas.mostrar("c")
+
+    def clear(self, fondo):
+        print("\033[H")
+        for i in range(len(self.canvas.capas)):
+            if i != fondo:
+                self.canvas.limpiar(i)
+
+
+def rebotar(sprite, scenes):
+    sprite.x += sprite.dx
+    sprite.y += sprite.dy
+    if sprite.x <= 0 or sprite.x + sprite.w >= scenes.canvas.lx:
+        sprite.dx *= -1
+    if sprite.y <= 0 or sprite.y + sprite.h >= scenes.canvas.ly:
+        sprite.dy *= -1
+
+
+def input_move(sprite, scene):
+    keys = scene.input_state
+    if "a" in keys:
+        sprite.x -= 1
+    if "d" in keys:
+        sprite.x += 1
+    if "w" in keys:
+        sprite.y -= 1
+    if "s" in keys:
+        sprite.y += 1
+
+
+def colision(a, b):
+    return a.x < b.x + b.w and a.x + a.w > b.x and a.y < b.y + b.h and a.y + a.h > b.y
+
+
+def colision_rebote(sprite, scene):
+    for other in scene.sprites:
+        if other is sprite:
+            continue
+        if colision(sprite, other):
+            if abs(sprite.x - other.x) > abs(sprite.y - other.y):
+                sprite.dx *= -1
+            else:
+                sprite.dy *= -1
+
+
+a = Canvas(98, 24, 2)
+
+FPS = 30
+frame_time = 1 / FPS
+s = [
+    "          *",
+    "         ***",
+    "        *****",
+    "       *******",
+    "      *********",
+    "     *****  ****",
+    "    *****    ****",
+    "   ******    *****",
+    "  *****        ****",
+    " ***             ***",
+    "*                   *",
+]
+
+s = Sprite(0, 0, 1, [Bitmap(s)], True, [input_move])
+o = Sprite(
+    60,
+    1,
+    1,
+    [Texto("arroz", "h")],
+    True,
+    [
+        input_move,
+    ],
+)
+fd = sys.stdin.fileno()
+old_settings = termios.tcgetattr(fd)
+tty.setcbreak(fd)
+escena = Scene(a)
+escena.sprites.append(s)
+escena.sprites.append(o)
+while True:
+    escena.clear(0)
+    escena.update()
+    escena.draw()
+    escena.render()
+    time.sleep(0.1)
+termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
