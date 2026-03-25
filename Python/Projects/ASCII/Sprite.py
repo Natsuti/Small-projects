@@ -2,14 +2,16 @@ from .Pixel import Pixel
 
 
 class Sprite:
-    def __init__(self, x, y, z, shapes, estile, behaviors=None, capa=0, fondo=True):
+    def __init__(
+        self, x, y, z, shapes, estile=None, behaviors=None, capa=0, fondo=True
+    ):
         self.x = x
         self.y = y
         self.capa = capa
         self.z = z
         self.fondo = fondo
         self.shapes = shapes
-        self.estile = estile
+        self.estile = estile or {}
         self.w, self.h = self._calcular_bbox() or None
         self.dx = 1
         self.dy = 1
@@ -20,11 +22,22 @@ class Sprite:
             for i in shape.generar():
                 if not self.fondo and i.simbolo == " ":
                     yield Pixel(
-                        self.x + i.x, self.y + i.y, self.capa, self.z, i.simbolo, True
+                        self.x + i.x,
+                        self.y + i.y,
+                        self.capa,
+                        self.z,
+                        i.simbolo,
+                        self.estile,
+                        True,
                     )
                 elif self.fondo:
                     yield Pixel(
-                        self.x + i.x, self.y + i.y, self.capa, self.z, i.simbolo
+                        self.x + i.x,
+                        self.y + i.y,
+                        self.capa,
+                        self.z,
+                        i.simbolo,
+                        self.estile,
                     )
 
     def mover_sprite(self, nx, ny):

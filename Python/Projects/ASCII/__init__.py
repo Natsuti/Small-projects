@@ -1,8 +1,9 @@
 from .Canvas import Canvas
 from .Pixel import Pixel
-from .Shapes import Linea, Rectangulo, Bitmap, Texto, Circulo, Triangulo
+from .Shapes import Linea, Rectangulo, Bitmap, Texto
 from .Sprite import Sprite
 from .Scene import Scene
+
 
 __all__ = [
     "Canvas",
@@ -10,8 +11,6 @@ __all__ = [
     "Texto",
     "Linea",
     "Rectangulo",
-    "Circulo",
-    "Triangulo",
     "Bitmap",
     "Sprite",
     "Scene",

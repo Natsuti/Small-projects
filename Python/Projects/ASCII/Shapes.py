@@ -44,7 +44,7 @@ class Linea:
                 yield Pixel(self.x + i, self.y + i, None, None, self.simbolo)
         elif self.m == "di":
             for i in range(self.largo + 1):
-                yield Pixel(self.x - i, self.y + i, None, None, self.simbolo)
+                yield Pixel(self.x + i, self.y - i, None, None, self.simbolo)
 
     def bbox(self):
         if self.m == "h":
@@ -58,7 +58,9 @@ class Linea:
 
 
 class Rectangulo:
-    def __init__(self, w, h, simbolo1, simbolo2):
+    def __init__(self, x, y, w, h, simbolo1, simbolo2):
+        self.x = x
+        self.y = y
         self.w = w
         self.h = h
         self.simbolo1 = simbolo1
@@ -66,26 +68,16 @@ class Rectangulo:
 
     def generar(self):
         lados = [
-            Linea(0, 0, self.h, self.simbolo1, "v"),
-            Linea(0, 0, self.w, self.simbolo2, "h"),
-            Linea(self.w, 0, self.h, self.simbolo1, "v"),
-            Linea(0, self.h, self.w, self.simbolo2, "h"),
+            Linea(self.x, self.y, self.h, self.simbolo1, "v"),
+            Linea(self.x, self.y, self.w, self.simbolo2, "h"),
+            Linea(self.w + self.x, self.y, self.h, self.simbolo1, "v"),
+            Linea(self.x, self.y + self.h, self.w, self.simbolo2, "h"),
         ]
         for lado in lados:
             yield from lado.generar()
 
     def bbox(self):
         return (self.w, self.h)
-
-
-class Circulo:
-    def __init__(self):
-        pass
-
-
-class Triangulo:
-    def __init__(self):
-        pass
 
 
 class Bitmap:

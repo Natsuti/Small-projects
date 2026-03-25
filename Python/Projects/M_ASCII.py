@@ -1,4 +1,12 @@
-from ASCII import Canvas, Sprite, Scene, Rectangulo, Linea
+from ASCII import (
+    Canvas,
+    Sprite,
+    Scene,
+    Rectangulo,
+    Texto,
+    Linea,
+    Bitmap,
+)
 
 e = Scene(Canvas())
 e.add_sprite(
@@ -6,15 +14,8 @@ e.add_sprite(
         40,
         0,
         0,
-        [
-            Rectangulo(20, 10, "|", "-"),
-            Linea(10, 11, 10, "*", "v"),
-            Linea(10, 11, 5, "*", "di"),
-            Linea(10, 11, 5, "*", "d"),
-        ],
-        30,
+        [Rectangulo(0, 3, 10, 5, "|", "-")],
+        {"fg": 4, "bg": 4, "bold": True},
     )
 )
-e.canvas.establecer_color(16)
-e.draw()
-e.render()
+e.start()
