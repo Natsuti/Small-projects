@@ -11,8 +11,8 @@ class Sprite:
         self.z = z
         self.fondo = fondo
         self.shapes = shapes
+        self.w, self.h = self.bbox()
         self.estile = estile or {}
-        self.w, self.h = self._calcular_bbox() or None
         self.dx = 1
         self.dy = 1
         self.behaviors = behaviors
@@ -40,15 +40,15 @@ class Sprite:
                         self.estile,
                     )
 
+    def bbox(self):
+        if not self.shapes:
+            return 0
+        min_x = min(s.x for s in self.shapes)
+        max_x = max(s.x + s.w for s in self.shapes)
+        min_y = min(s.y for s in self.shapes)
+        max_y = max(s.y + s.h for s in self.shapes)
+        return (max_x - min_x, max_y - min_y)
+
     def mover_sprite(self, nx, ny):
         self.x = nx
         self.y = ny
-
-    def _calcular_bbox(self):
-        max_w = 0
-        max_h = 0
-        for s in self.shapes:
-            w, h = s.bbox()
-            max_w = max(max_w, w)
-            max_h = max(max_h, h)
-        return max_w, max_h

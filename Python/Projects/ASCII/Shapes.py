@@ -2,26 +2,27 @@ from .Pixel import Pixel
 
 
 class Texto:
-    def __init__(self, simbolo, m):
+    def __init__(self, x, y, simbolo, m):
         self.simbolo = simbolo
         self.m = m
+        self.x = x
+        self.y = y
+        self.w = max([len(s) for s in simbolo])
+        self.h = 1
 
     def generar(self):
         if self.m == "h":
             for s in range(len(self.simbolo)):
-                yield Pixel(s, 0, None, None, self.simbolo[s])
+                yield Pixel(self.x + s, self.y, None, None, self.simbolo[s])
         elif self.m == "v":
             for s in range(len(self.simbolo)):
-                yield Pixel(0, s, None, None, self.simbolo[s])
+                yield Pixel(self.x, self.y + s, None, None, self.simbolo[s])
         elif self.m == "d":
             for s in range(len(self.simbolo)):
-                yield Pixel(s, s, None, None, self.simbolo[s])
+                yield Pixel(self.x + s, self.y + s, None, None, self.simbolo[s])
         elif self.m == "di":
             for s in range(len(self.simbolo)):
-                yield Pixel(s - 1, s - 1, None, None, self.simbolo[s])
-
-    def bbox(self):
-        return (len(self.simbolo), 1)
+                yield Pixel(self.x - s, self.y - s, None, None, self.simbolo[s])
 
 
 class Linea:
@@ -46,16 +47,6 @@ class Linea:
             for i in range(self.largo + 1):
                 yield Pixel(self.x + i, self.y - i, None, None, self.simbolo)
 
-    def bbox(self):
-        if self.m == "h":
-            return (self.largo + 1, 1)
-        if self.m == "v":
-            return (1, self.largo + 1)
-        if self.m == "d":
-            return (self.largo + 1, self.largo + 1)
-        elif self.m == "di":
-            return (self.largo + 1, self.largo + 1)
-
 
 class Rectangulo:
     def __init__(self, x, y, w, h, simbolo1, simbolo2):
@@ -76,9 +67,6 @@ class Rectangulo:
         for lado in lados:
             yield from lado.generar()
 
-    def bbox(self):
-        return (self.w, self.h)
-
 
 class Bitmap:
     def __init__(self, data):
@@ -90,8 +78,3 @@ class Bitmap:
         for y in range(len(self.data)):
             for x in range(len(self.data[y])):
                 yield Pixel(x, y, None, None, self.data[y][x])
-
-    def bbox(self):
-        w = max(len(f) for f in self.data)
-        h = len(self.data)
-        return (w, h)
